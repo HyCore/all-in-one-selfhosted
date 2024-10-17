@@ -8,7 +8,8 @@
         "nextcloud-aio-collabora",
         "nextcloud-aio-talk",
         "nextcloud-aio-nextcloud",
-        "nextcloud-aio-notify-push"
+        "nextcloud-aio-notify-push",
+        "nextcloud-aio-whiteboard"
       ],
       "display_name": "Apache",
       "image": "nextcloud/aio-apache",
@@ -29,6 +30,7 @@
       "environment": [
         "NC_DOMAIN=%NC_DOMAIN%",
         "NEXTCLOUD_HOST=nextcloud-aio-nextcloud",
+        "APACHE_HOST=nextcloud-aio-apache",
         "COLLABORA_HOST=nextcloud-aio-collabora",
         "TALK_HOST=nextcloud-aio-talk",
         "APACHE_PORT=%APACHE_PORT%",
@@ -36,7 +38,8 @@
         "TZ=%TIMEZONE%",
         "APACHE_MAX_SIZE=%APACHE_MAX_SIZE%",
         "APACHE_MAX_TIME=%NEXTCLOUD_MAX_TIME%",
-        "NOTIFY_PUSH_HOST=nextcloud-aio-notify-push"
+        "NOTIFY_PUSH_HOST=nextcloud-aio-notify-push",
+        "WHITEBOARD_HOST=nextcloud-aio-whiteboard"
       ],
       "volumes": [
         {
@@ -147,7 +150,8 @@
         "TURN_SECRET",
         "SIGNALING_SECRET",
         "FULLTEXTSEARCH_PASSWORD",
-        "IMAGINARY_SECRET"
+        "IMAGINARY_SECRET",
+        "WHITEBOARD_SECRET"
       ],
       "volumes": [
         {
@@ -173,6 +177,7 @@
       ],
       "environment": [
         "POSTGRES_HOST=nextcloud-aio-database",
+        "POSTGRES_PORT=5432",
         "POSTGRES_PASSWORD=%DATABASE_PASSWORD%",
         "POSTGRES_DB=nextcloud_database",
         "POSTGRES_USER=nextcloud",
@@ -202,6 +207,7 @@
         "TALK_PORT=%TALK_PORT%",
         "IMAGINARY_ENABLED=%IMAGINARY_ENABLED%",
         "IMAGINARY_HOST=nextcloud-aio-imaginary",
+        "CLAMAV_MAX_SIZE=%APACHE_MAX_SIZE%",
         "PHP_UPLOAD_LIMIT=%NEXTCLOUD_UPLOAD_LIMIT%",
         "PHP_MEMORY_LIMIT=%NEXTCLOUD_MEMORY_LIMIT%",
         "FULLTEXTSEARCH_ENABLED=%FULLTEXTSEARCH_ENABLED%",
@@ -219,10 +225,11 @@
         "DOCKER_SOCKET_PROXY_ENABLED=%DOCKER_SOCKET_PROXY_ENABLED%",
         "REMOVE_DISABLED_APPS=%REMOVE_DISABLED_APPS%",
         "APACHE_PORT=%APACHE_PORT%",
-        "APACHE_IP_BINDING=%APACHE_IP_BINDING%",
         "ADDITIONAL_TRUSTED_PROXY=%CADDY_IP_ADDRESS%",
         "THIS_IS_AIO=true",
-        "IMAGINARY_SECRET=%IMAGINARY_SECRET%"
+        "IMAGINARY_SECRET=%IMAGINARY_SECRET%",
+        "WHITEBOARD_SECRET=%WHITEBOARD_SECRET%",
+        "WHITEBOARD_ENABLED=%WHITEBOARD_ENABLED%"
       ],
       "stop_grace_period": 600,
       "restart": "unless-stopped",
@@ -266,6 +273,7 @@
         "REDIS_HOST=nextcloud-aio-redis",
         "REDIS_HOST_PASSWORD=%REDIS_PASSWORD%",
         "POSTGRES_HOST=nextcloud-aio-database",
+        "POSTGRES_PORT=5432",
         "POSTGRES_PASSWORD=%DATABASE_PASSWORD%",
         "POSTGRES_DB=nextcloud_database",
         "POSTGRES_USER=nextcloud"
@@ -344,7 +352,8 @@
         "nextcloud-aio"
       ],
       "cap_add": [
-        "MKNOD"
+        "MKNOD",
+        "SYS_ADMIN"
       ],
       "cap_drop": [
         "NET_RAW"
@@ -374,6 +383,7 @@
       "internal_port": "%TALK_PORT%",
       "environment": [
         "NC_DOMAIN=%NC_DOMAIN%",
+        "TALK_HOST=nextcloud-aio-talk",
         "TURN_SECRET=%TURN_SECRET%",
         "SIGNALING_SECRET=%SIGNALING_SECRET%",
         "TZ=%TIMEZONE%",
@@ -570,6 +580,7 @@
       "internal_port": "3310",
       "environment": [
         "TZ=%TIMEZONE%",
+        "MAX_SIZE=%NEXTCLOUD_UPLOAD_LIMIT%",
         "CLAMD_STARTUP_TIMEOUT=90"
       ],
       "volumes": [
@@ -736,6 +747,40 @@
       "read_only": true,
       "tmpfs": [
         "/tmp"
+      ],
+      "cap_drop": [
+        "NET_RAW"
+      ]
+    },
+    {
+      "container_name": "nextcloud-aio-whiteboard",
+      "image_tag": "%AIO_CHANNEL%",
+      "display_name": "Whiteboard",
+      "image": "nextcloud/aio-whiteboard",
+      "init": true,
+      "expose": [
+        "3002"
+      ],
+      "internal_port": "3002",
+      "environment": [
+        "TZ=%TIMEZONE%",
+        "NEXTCLOUD_URL=https://%NC_DOMAIN%",
+        "JWT_SECRET_KEY=%WHITEBOARD_SECRET%",
+        "STORAGE_STRATEGY=redis",
+        "REDIS_HOST=nextcloud-aio-redis",
+        "REDIS_HOST_PASSWORD=%REDIS_PASSWORD%"
+      ],
+      "secrets": [
+        "WHITEBOARD_SECRET",
+        "REDIS_PASSWORD"
+      ],
+      "restart": "unless-stopped",
+      "profiles": [
+        "whiteboard"
+      ],
+      "read_only": true,
+      "networks": [
+        "nextcloud-aio"
       ],
       "cap_drop": [
         "NET_RAW"

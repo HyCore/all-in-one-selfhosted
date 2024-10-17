@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:latest
-FROM nats:2.10.14-scratch as nats
+FROM nats:2.10.21-scratch AS nats
 FROM eturnal/eturnal:1.12.0 AS eturnal
-FROM strukturag/nextcloud-spreed-signaling:1.2.4 as signaling
-FROM alpine:3.19.1 as janus
+FROM strukturag/nextcloud-spreed-signaling:2.0.0 AS signaling
+FROM alpine:3.20.3 AS janus
 
-ARG JANUS_VERSION=v0.14.2
+ARG JANUS_VERSION=v0.14.4
 WORKDIR /src
 RUN set -ex; \
     apk add --no-cache \
@@ -34,7 +34,7 @@ RUN set -ex; \
     make configs; \
     rename -v ".jcfg.sample" ".jcfg" /usr/local/etc/janus/*.jcfg.sample
 
-FROM alpine:3.19.1
+FROM alpine:3.20.3
 ENV ETURNAL_ETC_DIR="/conf"
 COPY --from=janus     --chmod=777 --chown=1000:1000 /usr/local                          /usr/local
 COPY --from=eturnal   --chmod=777 --chown=1000:1000 /opt/eturnal                        /opt/eturnal
@@ -46,6 +46,7 @@ COPY --chmod=775 healthcheck.sh /healthcheck.sh
 COPY --chmod=664 supervisord.conf /supervisord.conf
 
 RUN set -ex; \
+    apk upgrade --no-cache -a; \
     apk add --no-cache \
         ca-certificates \
         tzdata \

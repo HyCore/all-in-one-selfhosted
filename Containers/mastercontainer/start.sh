@@ -76,7 +76,7 @@ if ! sudo -u www-data docker info &>/dev/null; then
     exit 1
 fi
 API_VERSION_FILE="$(find ./ -name DockerActionManager.php | head -1)"
-API_VERSION="$(grep -oP 'const API_VERSION.*\;' "$API_VERSION_FILE" | grep -oP '[0-9]+.[0-9]+' | head -1)"
+API_VERSION="$(grep -oP 'const string API_VERSION.*\;' "$API_VERSION_FILE" | grep -oP '[0-9]+.[0-9]+' | head -1)"
 # shellcheck disable=SC2001
 API_VERSION_NUMB="$(echo "$API_VERSION" | sed 's/\.//')"
 LOCAL_API_VERSION_NUMB="$(sudo -u www-data docker version | grep -i "api version" | grep -oP '[0-9]+.[0-9]+' | head -1 | sed 's/\.//')"
@@ -91,14 +91,21 @@ else
 fi
 
 # Check Storage drivers
-STORAGE_DRIVER="$(docker info | grep "Storage Driver")"
+STORAGE_DRIVER="$(sudo -u www-data docker info | grep "Storage Driver")"
 # Check if vfs is used: https://github.com/nextcloud/all-in-one/discussions/1467
 if echo "$STORAGE_DRIVER" | grep -q vfs; then
     echo "$STORAGE_DRIVER"
-    echo "Warning: It seems like the storage driver vfs is used. This will lead to problems with disk space and performance and is disrecommended!"
+    print_red "Warning: It seems like the storage driver vfs is used. This will lead to problems with disk space and performance and is disrecommended!"
 elif echo "$STORAGE_DRIVER" | grep -q fuse-overlayfs; then
     echo "$STORAGE_DRIVER"
-    echo "Warning: It seems like the storage driver fuse-overlayfs is used. Please check if you can switch to overlay2 instead."
+    print_red "Warning: It seems like the storage driver fuse-overlayfs is used. Please check if you can switch to overlay2 instead."
+fi
+
+# Check if snap install
+if sudo -u www-data docker info | grep "Docker Root Dir" | grep "/var/snap/docker/"; then
+    print_red "Warning: It looks like your installation uses docker installed via snap."
+    print_red "This comes with some limitations and is disrecommended by the docker maintainers."
+    print_red "See for example https://github.com/nextcloud/all-in-one/discussions/4890#discussioncomment-10386752"
 fi
 
 # Check if startup command was executed correctly
@@ -180,7 +187,7 @@ It is set to '$APACHE_PORT'."
     fi
 fi
 if [ -n "$APACHE_IP_BINDING" ]; then
-    if ! echo "$APACHE_IP_BINDING" | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+$\|^[0-9a-f:]\+$'; then
+    if ! echo "$APACHE_IP_BINDING" | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+$\|^[0-9a-f:]\+$\|^@INTERNAL$'; then
         print_red "You provided an ip-address for the apache container's ip-binding but it was not a valid ip-address.
 It is set to '$APACHE_IP_BINDING'."
         exit 1

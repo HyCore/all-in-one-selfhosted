@@ -164,6 +164,21 @@ class ConfigurationManager
         $this->WriteConfig($config);
     }
 
+    public function isWhiteboardEnabled() : bool {
+        $config = $this->GetConfig();
+        if (isset($config['isWhiteboardEnabled']) && $config['isWhiteboardEnabled'] === 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function SetWhiteboardEnabledState(int $value) : void {
+        $config = $this->GetConfig();
+        $config['isWhiteboardEnabled'] = $value;
+        $this->WriteConfig($config);
+    }
+
     public function SetClamavEnabledState(int $value) : void {
         $config = $this->GetConfig();
         $config['isClamavEnabled'] = $value;
@@ -271,17 +286,17 @@ class ConfigurationManager
      */
     public function SetDomain(string $domain) : void {
         // Validate that at least one dot is contained
-        if (strpos($domain, '.') === false) {
+        if (!str_contains($domain, '.')) {
             throw new InvalidSettingConfigurationException("Domain must contain at least one dot!");
         }
 
         // Validate that no slashes are contained
-        if (strpos($domain, '/') !== false) {
+        if (str_contains($domain, '/')) {
             throw new InvalidSettingConfigurationException("Domain must not contain slashes!");
         }
 
         // Validate that no colons are contained
-        if (strpos($domain, ':') !== false) {
+        if (str_contains($domain, ':')) {
             throw new InvalidSettingConfigurationException("Domain must not contain colons!");
         }
 
@@ -305,7 +320,7 @@ class ConfigurationManager
 
             if (empty($dnsRecordIP)) {
                 $record = dns_get_record($domain, DNS_AAAA);
-                if (!empty($record[0]['ipv6'])) {
+                if (isset($record[0]['ipv6']) && !empty($record[0]['ipv6'])) {
                     $dnsRecordIP = $record[0]['ipv6'];
                 }
             }

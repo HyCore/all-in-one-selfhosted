@@ -16,6 +16,9 @@ services:
       nextcloud-aio-notify-push:
         condition: service_started
         required: false
+      nextcloud-aio-whiteboard:
+        condition: service_started
+        required: false
     image: nextcloud/aio-apache:latest
     init: true
     ports:
@@ -24,6 +27,7 @@ services:
     environment:
       - NC_DOMAIN=${NC_DOMAIN}
       - NEXTCLOUD_HOST=nextcloud-aio-nextcloud
+      - APACHE_HOST=nextcloud-aio-apache
       - COLLABORA_HOST=nextcloud-aio-collabora
       - TALK_HOST=nextcloud-aio-talk
       - APACHE_PORT=${APACHE_PORT}
@@ -32,6 +36,7 @@ services:
       - APACHE_MAX_SIZE=${APACHE_MAX_SIZE}
       - APACHE_MAX_TIME=${NEXTCLOUD_MAX_TIME}
       - NOTIFY_PUSH_HOST=nextcloud-aio-notify-push
+      - WHITEBOARD_HOST=nextcloud-aio-whiteboard
     volumes:
       - nextcloud_aio_nextcloud:/var/www/html:ro
       - nextcloud_aio_apache:/mnt/data:rw
@@ -105,6 +110,7 @@ services:
       - ${NEXTCLOUD_TRUSTED_CACERTS_DIR}:/usr/local/share/ca-certificates:ro
     environment:
       - POSTGRES_HOST=nextcloud-aio-database
+      - POSTGRES_PORT=5432
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=nextcloud_database
       - POSTGRES_USER=nextcloud
@@ -132,6 +138,7 @@ services:
       - TALK_PORT=${TALK_PORT}
       - IMAGINARY_ENABLED=${IMAGINARY_ENABLED}
       - IMAGINARY_HOST=nextcloud-aio-imaginary
+      - CLAMAV_MAX_SIZE=${APACHE_MAX_SIZE}
       - PHP_UPLOAD_LIMIT=${NEXTCLOUD_UPLOAD_LIMIT}
       - PHP_MEMORY_LIMIT=${NEXTCLOUD_MEMORY_LIMIT}
       - FULLTEXTSEARCH_ENABLED=${FULLTEXTSEARCH_ENABLED}
@@ -148,8 +155,9 @@ services:
       - FULLTEXTSEARCH_PASSWORD=${FULLTEXTSEARCH_PASSWORD}
       - REMOVE_DISABLED_APPS=${REMOVE_DISABLED_APPS}
       - APACHE_PORT=${APACHE_PORT}
-      - APACHE_IP_BINDING=${APACHE_IP_BINDING}
       - IMAGINARY_SECRET=${IMAGINARY_SECRET}
+      - WHITEBOARD_SECRET=${WHITEBOARD_SECRET}
+      - WHITEBOARD_ENABLED=${WHITEBOARD_ENABLED}
     stop_grace_period: 600s
     restart: unless-stopped
     networks:
@@ -170,6 +178,7 @@ services:
       - REDIS_HOST=nextcloud-aio-redis
       - REDIS_HOST_PASSWORD=${REDIS_PASSWORD}
       - POSTGRES_HOST=nextcloud-aio-database
+      - POSTGRES_PORT=5432
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRES_DB=nextcloud_database
       - POSTGRES_USER=nextcloud
@@ -216,6 +225,7 @@ services:
       - nextcloud-aio
     cap_add:
       - MKNOD
+      - SYS_ADMIN
     cap_drop:
       - NET_RAW
 
@@ -229,6 +239,7 @@ services:
       - "8081"
     environment:
       - NC_DOMAIN=${NC_DOMAIN}
+      - TALK_HOST=nextcloud-aio-talk
       - TURN_SECRET=${TURN_SECRET}
       - SIGNALING_SECRET=${SIGNALING_SECRET}
       - TZ=${TIMEZONE}
@@ -280,6 +291,7 @@ services:
       - "3310"
     environment:
       - TZ=${TIMEZONE}
+      - MAX_SIZE=${NEXTCLOUD_UPLOAD_LIMIT}
       - CLAMD_STARTUP_TIMEOUT=90
     volumes:
       - nextcloud_aio_clamav:/var/lib/clamav:rw
@@ -363,6 +375,27 @@ services:
     cap_drop:
       - NET_RAW
 
+  nextcloud-aio-whiteboard:
+    image: nextcloud/aio-whiteboard:latest
+    init: true
+    expose:
+      - "3002"
+    environment:
+      - TZ=${TIMEZONE}
+      - NEXTCLOUD_URL=https://${NC_DOMAIN}
+      - JWT_SECRET_KEY=${WHITEBOARD_SECRET}
+      - STORAGE_STRATEGY=redis
+      - REDIS_HOST=nextcloud-aio-redis
+      - REDIS_HOST_PASSWORD=${REDIS_PASSWORD}
+    restart: unless-stopped
+    profiles:
+      - whiteboard
+    read_only: true
+    networks:
+      - nextcloud-aio
+    cap_drop:
+      - NET_RAW
+
 volumes:
   nextcloud_aio_apache:
     name: nextcloud_aio_apache
@@ -383,13 +416,6 @@ volumes:
   nextcloud_aio_nextcloud_data:
     name: nextcloud_aio_nextcloud_data
 
-# Inspired by https://github.com/mailcow/mailcow-dockerized/blob/master/docker-compose.yml
 networks:
   nextcloud-aio:
     name: nextcloud-aio
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      driver: default
-      config:
-        - subnet: ${IPV6_NETWORK}
